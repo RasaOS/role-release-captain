@@ -20,4 +20,4 @@ Canon has no `kind: role` yet (tenant ADR 2026-10-10-roles-are-element-modules D
 4. **Gate.** `RASA_SCHEMA_DIR=~/rAI/rasa-os/schema bin/check-role` must print GREEN before every commit.
 5. **Release.** Commit, tag `v<VERSION>` and push the tag. Never move a published tag; fix forward.
 6. **Merged is not live.** A role goes live only when an admin runs DOS ⚡ Publish roles from the tenant.
-7. **Private.** The prompt describes how the VSI fleet operates. Keep the repo private.
+7. **Public.** The repo is open. Never put a secret, a credential, customer data or anything read from production into it. Check 8 catches only the obvious token shapes.

@@ -22,7 +22,10 @@ Checks, each printed ok / FAIL:
      copied here by hand. galt re-checks it at publish.
   6. prompt.md holds 1..20000 characters.
   7. No canon ELEMENT_CONTRACT §8 forbidden vocabulary.
-  8. The canonical validator (RasaOS/schema bin/validate) passes on
+  8. No secret-shaped strings (GitHub, OpenAI, Google, Slack and AWS tokens,
+     private keys). The repo is public. This catches only the obvious
+     shapes; it does not prove the repo is clean.
+  9. The canonical validator (RasaOS/schema bin/validate) passes on
      rasa.json. It is SKIPPED unless RASA_SCHEMA_DIR is set, and a skip is
      not a pass.
 
@@ -51,6 +54,10 @@ ROLE_KEYS = {"id", "name", "summary", "version", "consumers", "knowledge", "take
              "grants", "powers", "listens", "agent_grants", "model", "effort", "retired"}
 TAKE_KEYS = {"kind", "requires", "optional", "include", "max_minutes", "proof"}
 FORBIDDEN = ["MANIFEST.json", "foundation.json", "manifest contract", "bootstrap/"]
+SECRET_RES = [re.compile(x) for x in (
+    r"gh[pousr]_[A-Za-z0-9]{30,}", r"github_pat_[A-Za-z0-9_]{30,}", r"sk-[A-Za-z0-9_-]{20,}",
+    r"AIza[0-9A-Za-z_-]{30,}", r"xox[abposr]-[A-Za-z0-9-]{10,}", r"AKIA[0-9A-Z]{16}",
+    r"-----BEGIN [A-Z ]*PRIVATE KEY-----")]
 PROMPT_MAX = 20000
 
 failed = 0
@@ -238,8 +245,9 @@ if not 1 <= len(prompt) <= PROMPT_MAX:
     p.append(f"prompt.md is {len(prompt)} characters (1..{PROMPT_MAX})")
 report(6, f"prompt.md ({len(prompt)} characters)", p)
 
-# 7 — canon §8 vocabulary
+# 7 — canon §8 vocabulary, and 8 — secret-shaped strings
 p = []
+secrets = []
 try:
     files = subprocess.run(["git", "ls-files"], cwd=ROOT, capture_output=True, text=True, check=True).stdout.split()
 except (OSError, subprocess.CalledProcessError):
@@ -254,18 +262,22 @@ for rel in files:
     for term in FORBIDDEN:
         if term in text:
             p.append(f"{rel} uses {term!r}")
+    for rx in SECRET_RES:
+        if rx.search(text):
+            secrets.append(f"{rel} holds something shaped like a secret ({rx.pattern[:12]}…): remove it and rotate it")
 report(7, "canon §8 vocabulary", p)
+report(8, "no secret-shaped strings (public repo)", secrets)
 
-# 8 — the canonical validator
+# 9 — the canonical validator
 schema = os.environ.get("RASA_SCHEMA_DIR")
 if not schema:
-    print("  8. SKIP canonical validator (set RASA_SCHEMA_DIR to a RasaOS/schema checkout; a skip is not a pass)")
+    print("  9. SKIP canonical validator (set RASA_SCHEMA_DIR to a RasaOS/schema checkout; a skip is not a pass)")
 else:
     sdir = Path(schema).expanduser()
     py = sdir / ".venv" / "bin" / "python3"
     cmd = [str(py) if py.exists() else sys.executable, str(sdir / "bin" / "validate"), str(ROOT / "rasa.json")]
     r = subprocess.run(cmd, capture_output=True, text=True)
-    report(8, "canonical validator PASS" if r.returncode == 0 else "canonical validator",
+    report(9, "canonical validator PASS" if r.returncode == 0 else "canonical validator",
            [] if r.returncode == 0 else [ln for ln in (r.stdout + r.stderr).strip().splitlines()[-6:]])
 
 print("check-role: " + ("GREEN" if failed == 0 else f"{failed} check(s) failed"))
