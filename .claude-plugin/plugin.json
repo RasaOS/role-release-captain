@@ -1,5 +1,5 @@
 {
   "name": "rasa-role-release-captain",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "The Release Captain role (`release-captain`) as a RasaOS role module. Ships what is already on main and verified on stage to production. Tags the version and releases. Never merges."
 }
