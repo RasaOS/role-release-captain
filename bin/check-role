@@ -19,7 +19,10 @@ Checks, each printed ok / FAIL:
      and rasa.json permissions is []. A role's gate grants are in role.json
      and reach a session only through a role assignment a person publishes.
   5. role.json keeps galt's RoleSchema limits (bus-contract src/roles.ts),
-     copied here by hand. galt re-checks it at publish.
+     copied here by hand. galt re-checks it at publish. An optional `crew`
+     block (tenant ADR 2026-10-28-one-role-list) says how a crew uses the
+     role: tier member|lead|manager, the galt card name, and that tier's card
+     header fields.
   6. prompt.md holds 1..20000 characters.
   7. No canon ELEMENT_CONTRACT §8 forbidden vocabulary.
   8. No secret-shaped strings (GitHub, OpenAI, Google, Slack and AWS tokens,
@@ -51,7 +54,11 @@ GATE_ACTIONS = {"deploy", "rules", "data", "merge", "repo_create"}
 GATE_ENVS = {"dev", "stage", "prod", "galt", "unknown", "*"}
 AGENT_GRANTS = {"router_update", "merge", "deploy_release", "deploy_lower"}
 ROLE_KEYS = {"id", "name", "summary", "version", "consumers", "knowledge", "takes", "kinds",
-             "grants", "powers", "listens", "agent_grants", "model", "effort", "retired"}
+             "grants", "powers", "listens", "agent_grants", "model", "effort", "retired", "crew"}
+CREW_COMMON = {"tier", "card", "placeholders", "tags", "when"}
+CREW_KEYS = {"member": CREW_COMMON | {"writes", "claims", "board", "saves", "web", "stages"},
+             "lead": CREW_COMMON | {"team", "finish", "standard", "stage-words", "settings"},
+             "manager": CREW_COMMON}
 TAKE_KEYS = {"kind", "requires", "optional", "include", "max_minutes", "proof"}
 FORBIDDEN = ["MANIFEST.json", "foundation.json", "manifest contract", "bootstrap/"]
 SECRET_RES = [re.compile(x) for x in (
@@ -164,6 +171,7 @@ report(4, "nothing widens", p)
 
 # 5 — role.json
 p = []
+prompt_text = (ROOT / "prompt.md").read_text(encoding="utf-8") if (ROOT / "prompt.md").is_file() else ""
 for k in role:
     if k not in ROLE_KEYS:
         p.append(f"unknown key {k!r}")
@@ -235,6 +243,30 @@ if not isinstance(ag, list) or not set(ag) <= AGENT_GRANTS:
     p.append(f"agent_grants must be values of {sorted(AGENT_GRANTS)}")
 if "listens" in role and not isinstance(role["listens"], list):
     p.append("listens must be a list (galt checks each source at load)")
+crew = role.get("crew")
+if crew is not None:
+    tier = crew.get("tier") if isinstance(crew, dict) else None
+    if tier not in CREW_KEYS:
+        p.append("crew.tier must be member, lead or manager")
+    else:
+        for k in crew:
+            if k not in CREW_KEYS[tier]:
+                p.append(f"crew has unknown key {k!r} for a {tier}")
+        if not isinstance(crew.get("card"), str) or not re.match(r"^[a-z][a-z0-9-]*$", crew.get("card", "")):
+            p.append("crew.card must be the galt card name (lowercase, dashes)")
+        for k in ("writes", "saves", "web"):
+            if k in crew and not isinstance(crew[k], bool):
+                p.append(f"crew.{k} must be true or false")
+        for k in ("claims", "stages", "tags", "team", "placeholders"):
+            if k in crew and not (isinstance(crew[k], list) and all(isinstance(x, str) and x for x in crew[k])):
+                p.append(f"crew.{k} must be a list of strings")
+        if "finish" in crew and crew["finish"] not in ("pr", "branch"):
+            p.append("crew.finish must be pr or branch")
+        if "standard" in crew and crew["standard"] not in ("extend", "replace"):
+            p.append("crew.standard must be extend or replace")
+        for ph in crew.get("placeholders") or []:
+            if "{" + ph + "}" not in prompt_text:
+                p.append(f"crew.placeholders names {{{ph}}}, which prompt.md does not use")
 report(5, f"role.json ({rid} v{role.get('version')})", p)
 
 # 6 — prompt.md
