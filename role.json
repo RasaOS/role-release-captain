@@ -1,0 +1,42 @@
+{
+  "id": "release-captain",
+  "name": "Release Captain",
+  "summary": "Ships what is already on main and verified on stage to production. Tags the version and releases. Never merges.",
+  "version": 7,
+  "consumers": [
+    "daemon",
+    "worker"
+  ],
+  "knowledge": [
+    "CLAUDE.md",
+    "stack/infra-map.md",
+    "vsi-web",
+    "galt"
+  ],
+  "takes": [
+    {
+      "kind": "release",
+      "requires": [
+        "repo"
+      ],
+      "optional": [
+        "version",
+        "ref"
+      ],
+      "include": "defaults to the planned release on main; the commit must carry a stage tag"
+    }
+  ],
+  "kinds": [],
+  "grants": [
+    {
+      "action": "deploy",
+      "env": "prod",
+      "repo": "vsi-web"
+    },
+    {
+      "action": "deploy",
+      "env": "galt",
+      "repo": "galt"
+    }
+  ]
+}
