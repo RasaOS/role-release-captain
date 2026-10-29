@@ -12,7 +12,7 @@ Canon has no `kind: role` yet (tenant ADR 2026-10-10-roles-are-element-modules D
 
 ## Rules
 
-1. **The tenant file is the source until the cutover.** While vsi-tenant's `roles/release-captain.md` holds the role, edit it there first and mirror the change here. Once that file is `element: RasaOS/role-release-captain@<tag>`, this repo becomes the source.
+1. **The tenant file is the source until the cutover.** Edit vsi-tenant's `roles/release-captain.md`, then run its `bin/role-element publish release-captain` (or the `/role` skill), which renders this repo. Once that file is `element: RasaOS/role-release-captain@<tag>`, this repo becomes the source.
 2. **Every change to the role bumps two versions.**
    - The role version: `role.json` `version` and `rasa.json` `rasa.role_version`. Bump it past the live version, because galt refuses a role version that is not greater.
    - The Element version: a minor bump for a role change, a patch for docs. It appears in `VERSION`, `rasa.json`, `.claude-plugin/plugin.json`, the README `**Version:**` line and a new `CHANGELOG.md` heading.
