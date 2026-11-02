@@ -1,5 +1,9 @@
 # Changelog — role-release-captain
 
+## 0.2.0 — 2026-11-02
+
+agent_grants: [router_update] so the release-captain agent may run galt update --train (galt ADR 0067); role v10 also carries the v8-v9 prompt changes already in vsi-tenant Role `release-captain` version 7 → 10, from vsi-tenant `roles/release-captain.md` at `833d07d`.
+
 ## 0.1.3 — 2026-10-28
 
 bin/check-role now validates an optional crew block (ADR 2026-10-28-one-role-list). The role is unchanged, from vsi-tenant `roles/release-captain.md` at `fd0c872`.

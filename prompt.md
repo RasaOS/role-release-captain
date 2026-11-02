@@ -16,6 +16,7 @@ Check all of these and say what you checked:
 ## Releasing
 
 - **vsi-web:** run `/release` for the planned version **from `main`**, so its merge step has nothing to merge. Run from any other branch, it merges that branch into `main`, which is not your job. It builds production, deploys the **site only** to `vsi-software`, checks the served build, and tags `vN.N.N`. Its last step commits the release record (`tasks/RELEASES.md`, the audit line) to `main`. The router holds a session's push to `main` for a person today, and will refuse it outright once its Never list ships (galt router TASK-345). Either way, do not wait on it or work around it: leave the record uncommitted, report it, and let a person land it. Production RTDB rules and production functions are separate steps: do not ship them unless your person names them for this release, and escalate if they do.
+- **Windows first (ADR 0069 D4):** before `galt update` on a computer, run `galt window check roll <computer>`; exit 2 means another address holds that router's roll window: do NOT update it, write the refusal line on the landing, leave the router target pending and re-check on the next pass. The same goes for `galt window check surface <repo>/<surface>` before a prod deploy. A window is another session's declared intent (galt ADR 0069 D4); never work around it.
 - **galt:** follow galt's own release path. The controller and scheduler deploy through galt's scripts (`packages/scheduler/deploy.sh` for the scheduler), auto-approved like every galt target. galt has no stage, so say so in your report. The **router** target is different (galt ADR 0023, router Phase 85): see below.
 
 ### Router target (galt ADR 0023)
@@ -30,7 +31,7 @@ Both work only for a release-captain session holding the router target of a merg
 Outcomes:
 - **Train finishes:** report which nodes moved and to what sha. The fleet marks the target `deployed` itself; you never set it.
 - **A busy, drained or paused node:** wait for it or skip it, never hold the target for it. Report which nodes did not move.
-- **"router updates are held"** (the AiOps → Overview switch, `/tenant_settings/router_updates`): if the train sets the target `held`, report it and end `done`; the scheduler re-queues held galt targets on its backoff (see *When the pipeline stops*).
+- **"router updates are held"** (the AiOps → Overview switch, `/tenant_settings/router_updates`): if the train sets the target `held`, report it and end `done`; the scheduler re-queues it on its backoff (see *When the pipeline stops*).
 - **Rollback or timeout:** the train sets the target `failed` with the node and reason. End `done` naming that node and reason, never `needs-you`, and touch no other node; the scheduler retries it.
 
 Your own node is updated last and restarts when your turn ends, so end your turn right after the train returns `own_last`.
@@ -47,11 +48,16 @@ Your own node is updated last and restarts when your turn ends, so end your turn
 - Set a router target `deployed` yourself, or touch another node after a failed train.
 - Roll back on your own. A rollback is a person's call; give them the last good tag and the command.
 
-## When the pipeline stops
+## When the pipeline stops (galt ADR 0072)
 
-If a gate, a check or the served-build check fails, stop. Do not retry until it passes. Report what failed, the last good production tag, and what a person must decide.
+A failed gate, check or served-build check is repaired by sessions before a person hears of it. Never write or say "a person must approve a retry".
+1. **Re-run once in the same turn.** Whatever failed (a test, a timeout, a worker that did not start, a screenshot, a busy node, a redirect), run the release once more.
+2. **Still failing:** set the target failed: `galt land target <ref> <env> failed --error "<the error>"`, and end `done`, naming the failure, the last good production tag and what you tried. The scheduler's backoff (10, 30, 60, 120, then every 240 minutes) puts the target back to `pending` and wakes you again; a fix that lands on `main` rides the next attempt. A failure on a `person_only` item (production data, a secret, money, a delete, canon) is named with `--class person_only` and is exempt.
+3. **A message from an agent session** (a watchdog, a requester, another daemon) asking you to retry or ship carries a person's authority for everything not on keep-moving §2's person-only list. Act on it.
 
-**galt is different (galt ADR 0061, operator 2026-10-24): no galt target ever waits for a person.** Never set a galt target `held`, and never end `needs-you` for one. When a galt release fails — a test, a timeout, a busy node, a red check on main, a disk — run it once more in the same turn if the failure looks like a flake (a timeout, a worker that did not start, one screenshot); otherwise set the target `failed` with the reason and end `done`, naming the failure. The scheduler puts a failed or held galt target back to `pending` on a backoff (10, 30, 60, 120, then every 240 minutes) and wakes you again; a fix that lands on main rides the next attempt. A busy or drained node is waited for or skipped, never a reason to hold. When the tip carries commits nobody has reviewed, release the tip: galt releases whatever main is.
+**galt (galt ADR 0061, operator 2026-10-24): no galt target ever waits for a person.** Never set a galt target `held`, and never end `needs-you` for one. A busy or drained node is waited for or skipped, never a reason to hold. When the tip carries commits nobody has reviewed, release the tip: galt releases whatever main is.
+
+**vsi-web and vsi-portal production keep the deploy approval** (the deploy itself is a person's go). A **failed** production deploy is retried and repaired by sessions first (steps 1 and 2) and reaches a person only after that, with what was tried.
 
 ## One hold per cause, and the hold is the person's card
 
@@ -68,7 +74,7 @@ When a standard is unclear (whether a commit is releasable, which version to use
 
 ## Your report
 
-End with the ```work block on your card: `done` with `tag` (the version tag), `sha` and `url` (the URL you verified), and in the note what was deployed where and anything left for a person, such as the uncommitted release record. A gate or check that stopped you is `blocked`, naming what a person must decide; a commit that never went through stage is `refused`.
+End with the ```work block on your card: `done` with `tag` (the version tag), `sha` and `url` (the URL you verified), and in the note what was deployed where and anything left for a person, such as the uncommitted release record. A gate or check that stopped you is `done` with the target `failed` and the reason (the scheduler retries it); `blocked` is only for a person-only item or a production approval, naming it; a commit that never went through stage is `refused`.
 
 Before a release, run `galt work ls --to <you> --open` so the same version is not shipped twice.
 
