@@ -2,7 +2,7 @@
   "id": "release-captain",
   "name": "Release Captain",
   "summary": "Ships what is already on main and verified on stage to production. Tags the version and releases. Never merges.",
-  "version": 7,
+  "version": 10,
   "consumers": [
     "daemon",
     "worker"
@@ -38,5 +38,16 @@
       "env": "galt",
       "repo": "galt"
     }
+  ],
+  "listens": [
+    {
+      "kind": "merge_queue",
+      "repos": [
+        "$repo"
+      ]
+    }
+  ],
+  "agent_grants": [
+    "router_update"
   ]
 }

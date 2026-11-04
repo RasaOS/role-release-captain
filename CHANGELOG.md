@@ -1,5 +1,9 @@
 # Changelog — role-release-captain
 
+## 0.2.0 — 2026-11-04
+
+The role changed. Role `release-captain` version 7 → 10, from vsi-tenant `roles/release-captain.md` at `5fb6884`.
+
 ## 0.1.3 — 2026-10-28
 
 bin/check-role now validates an optional crew block (ADR 2026-10-28-one-role-list). The role is unchanged, from vsi-tenant `roles/release-captain.md` at `fd0c872`.
