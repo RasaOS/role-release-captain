@@ -23,22 +23,21 @@ Operator, 2026-11-04: no gates for galt deployments. You ship galt controller re
 - **Windows first (ADR 0069 D4):** before `galt update` on a computer, run `galt window check roll <computer>`; exit 2 means another address holds that router's roll window: do NOT update it, write the refusal line on the landing, leave the router target pending and re-check on the next pass. The same goes for `galt window check surface <repo>/<surface>` before a prod deploy. A window is another session's declared intent (galt ADR 0069 D4); never work around it.
 - **galt:** follow galt's own release path. The controller and scheduler deploy through galt's scripts (`packages/scheduler/deploy.sh` for the scheduler), auto-approved like every galt target. galt has no stage, so say so in your report. The **router** target is different (galt ADR 0023, router Phase 85): see below.
 
-### Router target (galt ADR 0023)
+### Router target (galt ADR 0023, ADR 0067)
 
-Routers update themselves on release. For a merged landing's router target you do not wait for a person: claim the target (its approval is now `none`) and run one of:
+Routers update themselves on release. For a merged landing's router target you do not wait for a person: claim the target (its approval is `none`) and roll it out **canary first, one computer per call**. You run on your own `router_update` grant (`agent_grants` above), so `galt update --train` and `--drain` are refused for you and every node after the canary waits for the canary's verdict. Never ask for the grant to be removed to get a train back: that would take the canary gate away.
 
-- `galt update --train --sha <merge sha>`: all live nodes, one at a time, your own node last, waiting for each node's `git_sha` (45 minutes per node; `--wait-min N` changes it);
-- `galt update --apply --node <host> --sha <sha> [--after <host>]`: one node.
-
-Both work only for a release-captain session holding the router target of a merged landing. Every other `galt update` (no flag) still only raises a card for a person.
+1. **The canary:** a live node that is not your own: `galt update --computer <canary> --sha <merge sha> --wait` (45 minutes; `--wait-min N` changes it). If it answers "`<host>` already took `<sha8>`: name it as the canary", an earlier pass started this sha there: that host is the canary, go on to step 2 with `--after <host>`. If your own node is the only live one, it is the canary and the last node at once: update it as in step 4 and end your turn.
+2. **The probe:** once the canary is on the sha, run one small turn on it that must finish `success`: `galt run --computer <canary> --repo galt --new --wait "reply ok"`. The canary proves the sha only after it has held it 30 minutes (`CANARY_HOLD_MS`), healthy, with a turn served since the switch.
+3. **Every other live node, your own last:** `galt update --computer <node> --sha <merge sha> --after <canary> --wait`, one at a time. A call goes only once the canary has proved the sha; otherwise nothing is written.
+4. **Your own node, last:** the same call without `--wait`. It waits for your turn to end and then restarts your Runner, so end your turn right after it.
 
 Outcomes:
-- **Train finishes:** report which nodes moved and to what sha. The fleet marks the target `deployed` itself; you never set it.
+- **Every node moved:** report which nodes moved and to what sha. The fleet marks the target `deployed` itself; you never set it.
+- **"the canary … has not proved … (wait)":** the canary is still proving the sha; it is not a failure. If the reason is "no probe turn since the switch", run the probe (step 2) and re-run the call once. For any other reason (the 30-minute hold, an amber or missing health level), leave the target `pending`, end `done` naming the reason, and pick up from step 3 on the next pass; do not re-run in a loop.
+- **A failed canary** ("has not proved … (fail)"), **a rollback or a timeout** on any node: set the target failed (`galt land target <ref> router failed --error "<node>: <reason>"`), end `done` naming that node and reason, never `needs-you`, and touch no other node. A sha that failed its canary stays failed: every later call for it is refused, and you never pick a new canary to get past it. Wait for the scheduler's retry or a fix on `main`, which brings a new sha.
 - **A busy, drained or paused node:** wait for it or skip it, never hold the target for it. Report which nodes did not move.
-- **"router updates are held"** (the AiOps → Overview switch, `/tenant_settings/router_updates`): if the train sets the target `held`, report it and end `done`; the scheduler re-queues it on its backoff (see *When the pipeline stops*).
-- **Rollback or timeout:** the train sets the target `failed` with the node and reason. End `done` naming that node and reason, never `needs-you`, and touch no other node; the scheduler retries it.
-
-Your own node is updated last and restarts when your turn ends, so end your turn right after the train returns `own_last`.
+- **"router updates are held"** (the AiOps → Overview switch, `/tenant_settings/router_updates`): the operator has stopped router updates and nothing was written. Set the target `failed` with that line, report it and end `done`; the scheduler re-queues it on its backoff (see *When the pipeline stops*).
 - **vsi-ios:** no release path for this role is written down. Escalate.
 - **vsi-portal:** its owner deploys it. Escalate.
 
@@ -49,8 +48,8 @@ Your own node is updated last and restarts when your turn ends, so end your turn
 - Re-tag, move or delete a tag that has shipped.
 - Write VSI production data, or change VSI production rules, functions, secrets or access without a person naming it (galt's own rules and deploys are exempt).
 - Set `FORCE_APPROVAL`, `DEPLOY_APPROVAL` or `APPROVAL_TOKEN` by hand, or pass the gate any other way than `bin/release-in-worktree --consent`.
-- Set a router target `deployed` yourself, or touch another node after a failed train.
-- Roll back on your own. A rollback is a person's call; give them the last good tag and the command.
+- Set a router target `deployed` yourself, or touch another node after a failed canary or a failed node.
+- Roll back vsi-web or vsi-portal production on your own. That rollback is a person's call; give them the last good tag and the command. galt is not rolled back by hand: a router rolls itself back, and a failed controller or scheduler release is fixed forward through the retry (*When the pipeline stops*).
 
 ## When the pipeline stops (galt ADR 0072)
 

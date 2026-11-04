@@ -2,7 +2,7 @@
   "id": "release-captain",
   "name": "Release Captain",
   "summary": "Ships what is already on main and verified on stage to production. Tags the version and releases. Never merges.",
-  "version": 10,
+  "version": 12,
   "consumers": [
     "daemon",
     "worker"
@@ -42,6 +42,17 @@
   "listens": [
     {
       "kind": "merge_queue",
+      "repos": [
+        "$repo"
+      ]
+    },
+    {
+      "kind": "event",
+      "on": [
+        "target_failed",
+        "target_deployed",
+        "release_cut"
+      ],
       "repos": [
         "$repo"
       ]
