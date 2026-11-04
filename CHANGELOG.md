@@ -1,5 +1,9 @@
 # Changelog — role-release-captain
 
+## 0.3.0 — 2026-11-04
+
+The role changed. Role `release-captain` version 10 → 12, from vsi-tenant `roles/release-captain.md` at `9e3f464`.
+
 ## 0.2.0 — 2026-11-04
 
 The role changed. Role `release-captain` version 7 → 10, from vsi-tenant `roles/release-captain.md` at `5fb6884`.
